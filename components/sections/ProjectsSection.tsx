@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { PROJECTS } from "@/lib/constants";
 
@@ -104,9 +104,7 @@ function ProjectGallery({
   const gridClass =
     images.length === 1
       ? "grid-cols-1"
-      : images.length === 2
-        ? "grid-cols-2"
-        : "grid-cols-2";
+      : "grid-cols-2";
 
   return (
     <>
@@ -168,28 +166,45 @@ function Lightbox({
   onClose: () => void;
   onNavigate: (index: number) => void;
 }) {
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") onClose();
-    if (e.key === "ArrowLeft" && currentIndex > 0)
-      onNavigate(currentIndex - 1);
-    if (e.key === "ArrowRight" && currentIndex < images.length - 1)
-      onNavigate(currentIndex + 1);
-  };
+  const backdropRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-focus the backdrop so keyboard events work immediately
+  useEffect(() => {
+    backdropRef.current?.focus();
+  }, []);
+
+  // Global keydown for arrow nav and escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && currentIndex > 0)
+        onNavigate(currentIndex - 1);
+      if (e.key === "ArrowRight" && currentIndex < images.length - 1)
+        onNavigate(currentIndex + 1);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, images.length, onClose, onNavigate]);
 
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 sm:p-8"
-      onClick={onClose}
-      onKeyDown={handleKeyDown}
       role="dialog"
       aria-label={`${projectTitle} screenshot ${currentIndex + 1} of ${images.length}`}
       aria-modal="true"
-      tabIndex={0}
     >
+      {/* Invisible backdrop button for click-to-close */}
+      <button
+        ref={backdropRef}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+        aria-label="Close lightbox"
+      />
+
       {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+        className="absolute top-4 right-4 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
         aria-label="Close lightbox"
       >
         <XIcon className="h-6 w-6" />
@@ -198,22 +213,16 @@ function Lightbox({
       {/* Previous */}
       {currentIndex > 0 && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onNavigate(currentIndex - 1);
-          }}
-          className="absolute left-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+          onClick={() => onNavigate(currentIndex - 1)}
+          className="absolute left-4 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
           aria-label="Previous image"
         >
           <ChevronLeftIcon className="h-6 w-6" />
         </button>
       )}
 
-      {/* Image */}
-      <div
-        className="relative max-h-[85vh] max-w-[90vw]"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Image container */}
+      <div className="relative z-[1] max-h-[85vh] max-w-[90vw]">
         <Image
           src={images[currentIndex]}
           alt={`${projectTitle} screenshot ${currentIndex + 1}`}
@@ -231,11 +240,8 @@ function Lightbox({
       {/* Next */}
       {currentIndex < images.length - 1 && (
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onNavigate(currentIndex + 1);
-          }}
-          className="absolute right-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+          onClick={() => onNavigate(currentIndex + 1)}
+          className="absolute right-4 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
           aria-label="Next image"
         >
           <ChevronRightIcon className="h-6 w-6" />
